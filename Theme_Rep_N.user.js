@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Theme Rep N
 // @namespace        http://tampermonkey.net/
-// @version        1.8
+// @version        1.9
 // @description        ブログテーマの整理・変更ツール　新スキン版
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -229,13 +229,13 @@ function main(){
                     trep_panel.style.right=(50+client_w).toString() +'px';
                     themes_panel.style.left='unset';
                     themes_panel.style.right='20px';
-                    document.cookie='trep_panel=right; Max-Age=2592000'; }
+                    document.cookie='trep_panel=right; path=/; Max-Age=604800'; } // 7日
                 else{
                     trep_panel.style.left=(50+client_w).toString() +'px';
                     trep_panel.style.right='unset';
                     themes_panel.style.left='20px';
                     themes_panel.style.right='unset';
-                    document.cookie='trep_panel=left; Max-Age=2592000'; }}}
+                    document.cookie='trep_panel=left; path=/; Max-Age=604800'; }}} // 7日
 
 
         let themes_get=document.querySelector('#themes_get');
@@ -539,11 +539,11 @@ function main(){
                                 '<style>body { background: #cbdce3; font-size: 16px; '+
                                 'text-align: center; }</style>' ); }}}
 
-                tmp_w.onbeforeunload=function(){ // Cookie保存 30日
+                tmp_w.onbeforeunload=function(){ // Cookie保存 7日
                     trep_wtop=tmp_w.screenY;
                     trep_wleft=tmp_w.screenX;
-                    document.cookie='trep_wtop='+trep_wtop+'; Max-Age=2592000';
-                    document.cookie='trep_wleft='+trep_wleft+'; Max-Age=2592000'; }}}
+                    document.cookie='trep_wtop='+trep_wtop+'; path=/; Max-Age=604800';
+                    document.cookie='trep_wleft='+trep_wleft+'; path=/; Max-Age=604800'; }}}
 
     } // 記事一覧画面で動作
 
@@ -708,4 +708,3 @@ window.addEventListener('DOMContentLoaded', function(){
             window.opener.document.querySelector('.p-title__text').style.background=color; }}
 
 }); // 送信完了画面で動作
-
