@@ -1,0 +1,235 @@
+// ==UserScript==
+// @name         Theme Rep N
+// @namespace    http://tampermonkey.net/
+// @version      0.2
+// @description  ブログテーマの整理・変更ツール
+// @author       Ameba Blog User
+// @match        https://ameblo.jp/*
+// @match        https://secret.ameba.jp/*
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @run-at        document-start
+// @noframes
+// @grant         none
+// ==/UserScript==
+
+
+let target=document.querySelector('head');
+let monitor=new MutationObserver(main);
+monitor.observe(target, { childList: true });
+
+function main(){
+
+    let bord_active=document.querySelector('.skin-borderLoud.is-active');
+    if(bord_active && bord_active.textContent=="テーマ別"){ // テーマ別画面で動作
+
+        let style=document.createElement('style');
+        style.innerHTML=
+            '[data-uranus-component="entryItemTheme"] '+
+            '{ width: 400px; padding: 3px 8px 0; } '+
+            '[data-uranus-component="entryItemTheme"]:hover '+
+            '{ outline: 1px solid #2196f3; outline-offset: -1px; } '+
+            '.select_item { background: #2196f3; } '+
+            '.select_item dt, .select_item dd a { color: #fff !important; opacity: 1; } '+
+            '.skin-archiveNav .to_theme { outline: 2px solid red; outline-offset: -2px; } '+
+            '.doing_item { background: #00bcd4; } '+
+            '.doing_item dt, .doing_item dd a { color: #fff !important; opacity: 1; } '+
+            '.error_item { background: red; } '+
+            '.error_item dt, .error_item dd a { color: #fff !important; opacity: 1; }';
+        style.setAttribute("id", 'eaoa_style');
+        if(!document.getElementById('eaoa_style')){
+            document.querySelector('body').appendChild(style); }
+
+        let count; // 変更指定した文書数
+        let theme_bar;
+        let new_win;
+        let link_target;
+
+        select_set();
+        select_to();
+
+        function select_set(){
+            let ac_list=document.querySelectorAll('.skin-borderQuiet');
+            for(let k=0; k<ac_list.length; k++){
+                let theme=
+                    ac_list[k].querySelector('[data-uranus-component="entryItemTheme"]');
+                if(theme){
+                    theme.onclick=function(event){
+                        event.preventDefault();
+                        if(event.ctrlKey){
+                            select_all(theme); }
+                        else{
+                            selected(theme); }}}}
+
+            function select_all(item){
+                let theme_s=
+                    document.querySelectorAll('[data-uranus-component="entryItemTheme"]');
+                if(item.classList.contains('select_item')){
+                    for(let k=0; k<theme_s.length; k++){
+                        theme_s[k].classList.remove('select_item'); }}
+                else{
+                    for(let k=0; k<theme_s.length; k++){
+                        theme_s[k].classList.add('select_item'); }}}
+
+            function selected(item){
+                if(item.classList.contains('select_item')){
+                    item.classList.remove('select_item'); }
+                else{
+                    item.classList.add('select_item'); }}}
+
+
+        function select_to(){
+            let btn_arch=document.querySelectorAll('.skin-btnArchive');
+            for(let k=0; k<btn_arch.length; k++){
+                btn_arch[k].onclick=function(event){
+                    if(event.ctrlKey){
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+                        to_theme(btn_arch[k]); }}}
+
+            function to_theme(select_theme){
+                if(!select_theme.hasAttribute('aria-current')){
+                    count_select();
+                    if(count>0){
+                        select_theme.classList.add('to_theme');
+                        let btn_link=select_theme.getAttribute('href').split('theme-');
+                        let theme_id=btn_link[1].slice(0, 11);
+                        let theme_name=select_theme.textContent;
+                        setTimeout(()=>{
+                            let ok=confirm(
+                                "選択した記事　"+ count +"件（テーマに青マークを表示）のテーマ設定を\n"+
+                                "赤枠のテーマ："+ theme_name +" に変更します");
+                            if(ok){
+                                select_array(theme_id);
+                                open_all(); }
+                            else{
+                                clear_red(); }
+                        }, 100 );}}
+
+                function clear_red(){
+                    let btn_arch=document.querySelectorAll('.skin-btnArchive');
+                    for(let k=0; k<btn_arch.length; k++){
+                        btn_arch[k].classList.remove('to_theme');
+                        btn_arch[k].blur(); }}
+
+                function count_select(){
+                    count=0;
+                    let theme_s=
+                        document.querySelectorAll('[data-uranus-component="entryItemTheme"]');
+                    for(let k=0; k<theme_s.length; k++){
+                        if(theme_s[k].classList.contains('select_item')){
+                            count +=1; }}}}}
+
+
+        function select_array(new_theme){
+            theme_bar=[];
+            new_win=[];
+            link_target=[];
+            let ac_list=document.querySelectorAll('.skin-borderQuiet');
+            for(let k=0; k<ac_list.length; k++){
+                let theme=ac_list[k].querySelector('[data-uranus-component="entryItemTheme"]');
+                if(theme && theme.classList.contains('select_item')){
+                    theme_bar.push(theme);
+                    let title_link=ac_list[k].querySelector('h2 a');
+                    let entry_id_a=title_link.getAttribute('href').split('entry-');
+                    if(entry_id_a[1]){
+                        let entry_id=entry_id_a[1].slice(0, 11);
+                        if(entry_id){
+                            link_target.push(
+                                'https://blog.ameba.jp/ucs/entry/srventryupdateinput.do?id='+entry_id+
+                                '&eaoa='+new_theme); }}}}}
+
+
+        function open_all(){
+            let next=0;
+            open_win(next);
+            let search=setInterval(continuas, 500);
+            function continuas(){
+                if(new_win[next].closed){
+                    next +=1;
+                    if(next<link_target.length){
+                        open_win(next); }
+                    else{
+                        clearInterval(search);
+                        alert("処理が終了しました"); }
+                }}} // 余裕が無いと自動処理が停止する 🟥
+
+
+        function open_win(n){
+            let top_p=100;
+            new_win[n]=
+                window.open(link_target[n], n, 'top='+ top_p +', left=100, width=700, height=250');
+            theme_bar[n].classList.remove('select_item');
+            theme_bar[n].classList.add('doing_item'); } // 処理中のグリーン表示
+
+    }} // main() テーマ別画面で動作
+
+
+
+window.addEventListener('DOMContentLoaded', function(){
+    if(document.body.classList.contains('l-body')){ // 編集画面で動作
+
+        let style=document.createElement('style');
+        style.innerHTML=
+            '#globalHeader, #js-header-bar, #js-preview, .l-main, .l-hashtag, '+
+            '.p-cover, .l-communication, .p-warning--copylight, #globalFooter '+
+            '{ display: none !important; } '+
+            '.p-title__text { width: 675px !important; } '+
+            '.l-under-module { margin: 0px; } '+
+            '.l-postTime { position: absolute; left: 0 !important; } '+
+            '.p-theme { position: absolute; left: 265px !important; width: 410px; } '+
+            '.l-footer { padding: 0; } '+
+            '.p-submit__container { margin: 85px 150px 0 0 !important; }';
+
+        style.setAttribute("id", 'eaoa_style');
+        if(!document.getElementById('eaoa_style')){
+            document.querySelector('body').appendChild(style); }
+
+        let theme_id;
+        let query=window.location.search.slice(1); // 文頭?を除外
+        if(query){
+            let theme_id_n=query.split('&')[1].split('=')[0];
+            if(theme_id_n && theme_id_n=='eaoa'){
+                theme_id=query.split('&')[1].split('=')[1]; }}
+
+        if(theme_id){ // 編集画面の処理 🟦
+            let interval=setInterval(find_selector, 40);
+            function find_selector(){
+                let selector=document.querySelector('#js-themeSelector');
+                let publish=document.querySelector('.js-submitButton[publishflg="0"]');
+                if(selector && publish){
+                    clearInterval(interval);
+                    selector.value=theme_id;
+                    setTimeout(()=>{
+                        publish.click();
+                    }, 1000); // 処理の余裕時間 🟥
+                }}}
+
+    }}); // 編集画面で動作
+
+
+
+window.addEventListener('DOMContentLoaded', function(){
+    let body_id=document.body.getAttribute('id');
+    if(body_id=="entryCreate"){ // 孫ウインドウ（完了画面）で動作
+        window.document.body.style.background='#c5d8e1';
+        window.document.body.style.boxShadow='0 0 0 100vh #c5d8e1';
+
+        select_e(close_w);
+
+        function select_e(close_w){
+            let error_report=document.querySelector('.p-error');
+            if(error_report==null){ // 保存エラー無い場合 編集画面を閉じる
+                if(window.opener){
+                    window.opener.close(); }}
+            else{ // 保存エラーのある場合は 赤を送信　編集画面を残す
+                if(window.opener){
+                    report('red'); }}
+            close_w(); }
+
+        function close_w(){
+            window.open('about:blank','_self').close(); } // 完了画面は常に自動的に閉じる
+
+        function report(color){
+            window.opener.document.querySelector('.p-title__text').style.background=color; }}
+
+}); // 孫ウインドウ（完了画面）で動作
