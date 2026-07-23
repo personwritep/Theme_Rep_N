@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Theme Rep N
 // @namespace        http://tampermonkey.net/
-// @version        1.9
+// @version        2.0
 // @description        ブログテーマの整理・変更ツール　新スキン版
 // @author        Ameba Blog User
 // @match        https://ameblo.jp/*
@@ -566,13 +566,17 @@ function main(){
 
 
     function get_cookie(name){
-        let cookie_req=document.cookie.split('; ').find(row=>row.startsWith(name));
-        if(cookie_req){
-            if(cookie_req.split('=')[1]==null){
+        let cookie_req=document.cookie.split(';');
+        for(let k=0; k<cookie_req.length; k++){
+            cookie_req[k]=cookie_req[k].trim(); } // 前後の空白を削除
+
+        let cookie=cookie_req.find(row=>row.startsWith(name+'='));
+        if(cookie){
+            if(cookie.split('=')[1]==null){
                 return 0; }
             else{
-                return cookie_req.split('=')[1]; }}
-        if(!cookie_req){
+                return cookie.split('=')[1]; }}
+        if(!cookie){
             return 0; }}
 
 } // main()
