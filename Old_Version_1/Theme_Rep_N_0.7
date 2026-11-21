@@ -1,0 +1,483 @@
+// ==UserScript==
+// @name         Theme Rep N
+// @namespace    http://tampermonkey.net/
+// @version      0.7
+// @description  ブログテーマの整理・変更ツール　新スキン版
+// @author       Ameba Blog User
+// @match        https://ameblo.jp/*
+// @match        https://secret.ameba.jp/*
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @run-at        document-start
+// @noframes
+// @grant         none
+// ==/UserScript==
+
+
+let target0=document.querySelector('head');
+let monitor0=new MutationObserver(main0);
+monitor0.observe(target0, { childList: true });
+
+function main0(){
+    if(document.querySelector('.skin-page')){ // 新スキンブログ画面で動作
+        let panel=document.createElement('div');
+        panel.innerHTML=
+            '<span id="trep_span">記事選択：Click / Ctrl + Click'+
+            '　　変更先テーマ選択：Ctrl + Click</span>'+
+            '<div id="trep_inner">'+
+            '<span id="trep_progress"></span>'+
+            '<input id="theme_write" type="submit" value="OK">'+
+            '<input id="not_write" type="submit" value="Cancel">'+
+            '<input id="w_position" type="submit" value="サブウインドウ位置設定">'+
+            '<input id="blog_setting" type="submit" value="テーマ編集"></div>'+
+            '<style>#trep_panel { position: fixed; z-index: 100; top: 60px; left: 60px; '+
+            'font: bold 16px/24px Meiryo; color: #999; background: #fff; '+
+            'width: 620px; height: 80px; padding: 17px 5px 0; text-align: left; '+
+            'border: 1px solid #aaa; border-radius: 6px; box-sizing: content-box; '+
+            'overflow: hidden; box-shadow: 0 20px 30px rgb(0, 0, 0, .2); } '+
+            '#trep_span { margin-left: 20px; white-space: nowrap; } '+
+            '#trep_inner { position: absolute; bottom: 6px; left: 5px; '+
+            'height: 37px; width: 620px; background: #e4eef8; } '+
+            '#trep_progress { margin-left: 20px; line-height: 41px; opacity: .5; } '+
+            '.trep_box { padding: 3px 15px 0; margin: 0 10px; color: #000; '+
+            'border: 1px solid #666; border-radius: 2px; } '+
+            '.trep_num { font-size: 12px; color: #777; } '+
+            '#theme_write, #not_write, #w_position, #blog_setting { position: absolute; '+
+            'bottom: 4px; font: bold 16px Meiryo; padding: 2px 10px 0; height: 29px; '+
+            'color: #000; box-shadow: inset 0 0 0 40px rgb(40, 180, 250, 0.3); } '+
+            '#theme_write { right: 280px; display: none; } '+
+            '#not_write { right: 180px; display: none; } '+
+            '#w_position, #blog_setting { display: block; color: #777; '+
+            'box-shadow: inset 0 0 0 20px rgb(0, 255, 232, 0.1); } '+
+            '#w_position { left: 20px; } #blog_setting { right: 25px; }';
+
+        panel.setAttribute('id', 'trep_panel');
+        let trep_panel=document.querySelector('#trep_panel');
+        if(!trep_panel){
+            document.querySelector('body').appendChild(panel); }
+
+
+        let blog_setting=document.querySelector('#blog_setting');
+        if(blog_setting){
+            blog_setting.onclick=function(){
+                window.open('https://blog.ameba.jp/ucs/theme/themeinput.do', '_blank'); }}
+
+    } // 新スキンブログ画面で動作
+} // main0()
+
+
+
+let target1=document.querySelector('head');
+let monitor1=new MutationObserver(main1);
+monitor1.observe(target1, { childList: true });
+
+function main1(){
+    let bord_active=document.querySelector('.skin-borderLoud.is-active');
+    if(bord_active && bord_active.textContent=="テーマ別"){ // テーマ別画面で動作
+
+        let style=document.createElement('style');
+        style.innerHTML=
+            '#main { font-family: Meiryo; } '+
+            '.skin-archiveList .skin-borderQuiet:hover { '+
+            'outline: 1px solid #2196f3; outline-offset: -1px; '+
+            'box-shadow: inset 0 0 0 120px rgba(187, 222, 251, .3); } '+
+            '.skin-archiveList .skin-borderQuiet:hover * { opacity: 1; } '+
+            '.select_item { background: #2196f3; } '+
+            '.select_item * { color: #fff; } '+
+            '.skin-archiveNav .to_theme { outline: 2px solid red; outline-offset: -2px; } '+
+            '.doing_item { background: #00bcd4; } '+
+            '.doing_item .skin-textQuiet { color: #fff; }';
+        style.setAttribute("id", 'trep_style');
+        if(!document.getElementById('trep_style')){
+            document.querySelector('body').appendChild(style); }
+
+
+        let s_mode=0; // 選択操作モード
+        let count; // 変更指定した文書数
+        let selected_array;
+        let new_win;
+        let link_target;
+        let trep_wtop;
+        let trep_wleft;
+
+        select_set();
+        select_to();
+
+        function select_set(){
+            let ac_list=document.querySelectorAll('.skin-archiveList .skin-borderQuiet');
+            for(let k=0; k<ac_list.length; k++){
+                ac_list[k].onclick=function(event){
+                    event.preventDefault();
+                    if(event.ctrlKey){
+                        select_all(ac_list[k]); }
+                    else{
+                        selected(ac_list[k]); }}}
+
+            function select_all(item){
+                if(s_mode==0){
+                    if(item.classList.contains('select_item')){
+                        for(let k=0; k<ac_list.length; k++){
+                            ac_list[k].classList.remove('select_item'); }}
+                    else{
+                        for(let k=0; k<ac_list.length; k++){
+                            ac_list[k].classList.add('select_item'); }}}}
+
+            function selected(item){
+                if(s_mode==0){
+                    if(item.classList.contains('select_item')){
+                        item.classList.remove('select_item'); }
+                    else{
+                        item.classList.add('select_item'); }}}
+        } // select_set()
+
+
+        function select_to(){
+            let btn_arch=document.querySelectorAll('.skin-btnArchive');
+            for(let k=0; k<btn_arch.length; k++){
+                btn_arch[k].onclick=function(event){
+                    clear_red();
+                    if(event.ctrlKey){
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+                        to_theme(btn_arch[k]); }}}
+
+
+            function to_theme(select_theme){
+                if(!select_theme.hasAttribute('aria-current')){
+                    count_select();
+                    if(count>0){
+                        s_mode=1;
+                        select_theme.classList.add('to_theme'); // 変更先テーマを選択
+
+                        let btn_link=select_theme.getAttribute('href').split('theme-');
+                        let theme_id=btn_link[1].slice(0, 11);
+                        let theme_name=select_theme.textContent;
+
+                        setTimeout(()=>{
+                            let trep_span=document.querySelector('#trep_span');
+                            let w_position=document.querySelector('#w_position');
+                            let theme_write=document.querySelector('#theme_write');
+                            let not_write=document.querySelector('#not_write');
+                            if(trep_span && w_position && theme_write && not_write){
+                                trep_span.innerHTML=
+                                    '記事数<span class="trep_box b1"></span>'+
+                                    '⇨ テーマ<span class="trep_box b2"></span>に変更';
+                                document.querySelector('.trep_box.b1').textContent=count;
+                                theme_name_disp(theme_name);
+                                w_position.style.display='none';
+                                theme_write.style.display='block';
+                                not_write.style.display='block';
+
+                                theme_write.onclick=function(){ // OKを押した場合
+                                    theme_write.style.display='none';
+                                    not_write.style.display='none';
+                                    select_array(theme_id);
+                                    open_all(); }
+
+                                not_write.onclick=function(){ // Cancelを押した場合
+                                    clear_red(); }}
+                        }, 100 ); }
+                }} // to_theme()
+
+
+            function count_select(){
+                count=0;
+                let ac_list=document.querySelectorAll('.skin-archiveList .skin-borderQuiet');
+                for(let k=0; k<ac_list.length; k++){
+                    if(ac_list[k].classList.contains('select_item')){
+                        count +=1; }}}
+        } // select_to()
+
+
+        function theme_name_disp(str){
+            let name=str.slice(0, str.lastIndexOf('('));
+            let num=str.slice(str.lastIndexOf('(')).replace(/[^0-9]/g, '');
+            let target_theme=document.querySelector('.trep_box.b2');
+            let target_num=document.querySelector('.trep_num');
+            if(target_theme){
+                target_theme.innerHTML=
+                    name+'<span class="trep_num"> ◂'+num+'▸</span>'; }}
+
+
+        function clear_red(){
+            s_mode=0;
+            let trep_span=document.querySelector('#trep_span');
+            let w_position=document.querySelector('#w_position');
+            let theme_write=document.querySelector('#theme_write');
+            let not_write=document.querySelector('#not_write');
+            trep_span.innerHTML='記事選択：Click / Ctrl + Click　　変更先テーマ選択：Ctrl + Click';
+            w_position.style.display='block';
+            theme_write.style.display='none';
+            not_write.style.display='none';
+
+            let btn_arch=document.querySelectorAll('.skin-btnArchive');
+            for(let k=0; k<btn_arch.length; k++){
+                btn_arch[k].classList.remove('to_theme');
+                btn_arch[k].blur(); }}
+
+
+        function select_array(new_theme){
+            selected_array=[];
+            link_target=[];
+            let ac_list=document.querySelectorAll('.skin-archiveList .skin-borderQuiet');
+            for(let k=0; k<ac_list.length; k++){
+                if(ac_list[k].classList.contains('select_item')){
+                    selected_array.push(ac_list[k]);
+                    let title_link=ac_list[k].querySelector('h2 a');
+                    let entry_id_a=title_link.getAttribute('href').split('entry-');
+                    if(entry_id_a[1]){
+                        let entry_id=entry_id_a[1].slice(0, 11);
+                        if(entry_id){
+                            link_target.push(
+                                'https://blog.ameba.jp/ucs/entry/srventryupdateinput.do?id='+entry_id+
+                                '&trep='+new_theme); }}}}}
+
+
+        function open_all(){
+            trep_wtop=get_cookie('trep_wtop');
+            trep_wleft=get_cookie('trep_wleft');
+            progress(0);
+            let next=0;
+            open_win(next);
+            let search=setInterval(continuas, 500); // 自動で実行指示 🟥
+            function continuas(){
+                if(new_win[next].closed){
+                    next +=1;
+                    progress(next);
+                    if(next<link_target.length){
+                        open_win(next); }
+                    else{
+                        progress(next);
+                        clearInterval(search);
+                        ending(); }}}}
+
+
+        function progress(n){
+            let disp='';
+            let trep_progress=document.querySelector('#trep_progress');
+            if(n>=0){
+                for(let k=0; k<count; k++){
+                    if(k<n){
+                        disp +='🟦'; }
+                    else{
+                        disp +='⬜'; }}
+                trep_progress.textContent=disp; }
+            else{
+                trep_progress.textContent=''; }}
+
+
+        function open_win(n){
+            new_win=[];
+            let win_option='top='+trep_wtop+',left='+trep_wleft+
+                ',width=700,height=250'; // 🔲
+
+            new_win[n]=window.open(link_target[n], n, win_option); // 🔲
+            selected_array[n].classList.remove('select_item');
+            selected_array[n].classList.add('doing_item'); } // 処理中のグリーン表示
+
+
+        function ending(){
+            let trep_span=document.querySelector('#trep_span');
+            if(trep_span){
+                trep_span.innerHTML='処理が終了しました。 テーマ別記事リストを更新します';
+                setTimeout(()=>{
+                    //    reload_part(); // 旧タイプスキンの場合
+                    window.location.reload(false); // 新タイプスキンの場合
+                }, 4000);
+                setTimeout(function(){
+                    clear_red();
+                    progress(-1);
+                    select_set();
+                    select_to();
+                }, 4500); }}
+
+
+        function reload_part(){
+            let part=document.querySelector('.skin-blogArchiveBody.skin-bgMain');
+            if(part){
+                let url=location.href;
+                ajaxUpdate(url, part); // リスト表示を更新
+
+                function ajaxUpdate(url, elem){ // XMLHttpRequestを使ってAjaxで更新
+                    url=url+'?ver='+new Date().getTime(); // キャッシュされないurl
+                    let ajax=new XMLHttpRequest;
+                    ajax.open('GET', url, true);
+                    ajax.onload=function(){
+                        let tmp=document.createElement('div');
+                        tmp.setAttribute('id', 'tmp_div');
+                        tmp.style.display='none';
+                        let tmp_div=document.querySelector('#tmp_div');
+                        if(!tmp_div){
+                            document.querySelector('body').appendChild(tmp); }
+                        tmp.innerHTML=ajax.responseText;
+                        elem.innerHTML=
+                            tmp.querySelector('.skin-blogArchiveBody.skin-bgMain').innerHTML;
+                        tmp.innerHTML=''; }
+                    ajax.send(null); }}}
+
+
+        let w_position=document.querySelector('#w_position');
+        if(w_position){
+            w_position.onclick=function(event){
+                event.preventDefault();
+                let tmp_w;
+                open_tmp();
+
+                function open_tmp(){
+                    if(!tmp_w || tmp_w.closed){
+                        let win_option='top='+get_cookie('trep_wtop')+',left='+get_cookie('trep_wleft')+
+                            ',width=700,height=250'; // 🔲
+                        tmp_w=window.open('', 'tmp_window', win_option); // 🔲
+                        if(!tmp_w.document.querySelector('#tmp_w_set')){
+                            tmp_w.document.write(
+                                '<p id="tmp_w_set" style="font: bold 18px Meiryo; padding: 30px 0 10px;">'+
+                                'サブウインドウの位置設定</p>'+
+                                '<p>このサブウインドウを適当な位置へドラッグします<br>'+
+                                '下のボタンを押すとウインドウ位置が設定されます</p>'+
+                                '<button style="font: bold 16px Meiryo; padding: 2px 10px 0;" '+
+                                'onclick="window.close()" type="button">位置を設定</button>'+
+                                '<style>body { background: #cbdce3; font-size: 16px; text-align: center; }'+
+                                '</style>'); }}}
+
+                tmp_w.onbeforeunload=function(){ // Cookie保存 30日
+                    trep_wtop=tmp_w.screenY;
+                    trep_wleft=tmp_w.screenX;
+                    document.cookie='trep_wtop='+trep_wtop+'; Max-Age=2592000';
+                    document.cookie='trep_wleft='+trep_wleft+'; Max-Age=2592000'; }}}
+
+
+        function get_cookie(name){
+            let cookie_req=document.cookie.split('; ').find(row=>row.startsWith(name));
+            if(cookie_req){
+                if(cookie_req.split('=')[1]==null){
+                    return 0; }
+                else{
+                    return cookie_req.split('=')[1]; }}
+            if(!cookie_req){
+                return 0; }}
+
+    }} // main1() テーマ別画面で動作
+
+
+
+window.addEventListener('DOMContentLoaded', function(){
+    if(location.pathname.indexOf('updateinput')!=-1){ // 編集画面で動作
+        let theme_id;
+        let query=window.location.search.slice(1); // 文頭?を除外
+        if(query){
+            let theme_id_n=query.split('&')[1].split('=')[0];
+            if(theme_id_n && theme_id_n=='trep'){
+                theme_id=query.split('&')[1].split('=')[1]; }}
+
+        if(document.body.classList.contains('l-body')){ // 最新版エディタで動作
+            let style=document.createElement('style');
+            style.innerHTML=
+                '#globalHeader, #js-header-bar, #js-preview, .l-main, .l-hashtag, '+
+                '.p-cover, .l-communication, .p-warning--copylight, #globalFooter '+
+                '{ display: none !important; } '+
+                '.p-title__text { width: 675px !important; } '+
+                '.l-under-module { margin: 0px; } '+
+                '.l-postTime { position: absolute; left: 0 !important; } '+
+                '.p-theme { position: absolute; left: 265px !important; width: 410px; } '+
+                '.l-footer { padding: 0; } '+
+                '.p-submit__container { margin: 85px 150px 0 0 !important; }';
+
+            style.setAttribute("id", 'trep_style');
+            if(!document.getElementById('trep_style')){
+                document.querySelector('body').appendChild(style); }
+
+            if(theme_id){ // 編集画面の処理 🟦
+                let interval=setInterval(find_selector, 40); // 処理タイミング 🟥
+                function find_selector(){
+
+                    let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+                    let iframe_body;
+                    if(editor_iframe){
+                        let iframe_doc=editor_iframe.contentWindow.document;
+                        if(iframe_doc){
+                            iframe_body=iframe_doc.querySelector('body.cke_editable'); }}
+                    let tageditor_text=document.querySelector('#entryTextArea');
+                    let selector=document.querySelector('#js-themeSelector');
+                    let publish=document.querySelector('.js-submitButton[publishflg="0"]');
+
+                    if((iframe_body || tageditor_text) && selector && publish){
+                        clearInterval(interval);
+                        selector.value=theme_id;
+                        rel();
+                        function rel(){
+                            setTimeout(()=>{
+                                publish.click();
+                            }, 1000); // 処理タイミング 🟥
+                            setTimeout(()=>{
+                                publish.style.background='red';
+                                publish.click();
+                            }, 5000); } // バックアップ押下　停止を救済する🟥
+                    }}}
+        } // 最新版エディタで動作
+
+        else{ // 旧エディタで動作
+            let style=document.createElement('style');
+            style.innerHTML=
+                '#globalHeader, #ucsHeader, .l-ucs-sidemenu-area, #ucsMainRight, '+
+                '#entryCreate h1, #entryTheme .btnDefault, .entryHashtag, '+
+                '#firstDescriptionArea, #entryMain, #displayTag, #atclInfo, #previewBtn, '+
+                '.amemberHelp, #attentionBox2 { display: none !important; } '+
+                '#ucsContent { background: orange; } '+
+                '#ucsMainLeft { margin: 0 20px; } '+
+                '#subContentsArea { margin: 0 !important; } '+
+                '#title { padding: 2px 10px 0; font: 16px Meiryo; } '+
+                '#js-ga_change select { padding: 3px 6px 0; font: 16px Meiryo; } '+
+                '.btnDefault { font: 16px Meiryo; } ';
+
+            style.setAttribute("id", 'trep_style');
+            if(!document.getElementById('trep_style')){
+                document.querySelector('body').appendChild(style); }
+
+            if(theme_id){ // 編集画面の処理 🟦
+                let interval=setInterval(find_selector, 200); // 処理タイミング 🟥
+                function find_selector(){
+                    let selector=document.querySelector('#js-ga_change select');
+                    let publish=
+                        document.querySelector('.actionControl .btnDefault[value="全員に公開"]');
+                    if(selector && publish){
+                        clearInterval(interval);
+                        selector.value=theme_id;
+                        rel();
+                        function rel(){
+                            setTimeout(()=>{
+                                publish.click();
+                            }, 1500); // 処理タイミング 🟥
+                            setTimeout(()=>{
+                                publish.style.background='red';
+                                publish.click();
+                            }, 5000); } // バックアップ押下　停止を救済する🟥
+                    }}}
+        } // 旧エディタで動作
+    }}); // 編集画面で動作
+
+
+
+window.addEventListener('DOMContentLoaded', function(){
+    if(location.pathname.indexOf('updateend')!=-1){ // 送信完了画面で動作
+
+        window.document.body.style.background='#c5d8e1';
+        window.document.body.style.boxShadow='0 0 0 100vh #c5d8e1';
+
+        select_e(close_w);
+
+        function select_e(close_w){
+            let error_report=document.querySelector('.p-error');
+            if(error_report==null){ // 保存エラー無い場合 編集画面を閉じる
+                if(window.opener){
+                    window.opener.close(); }}
+            else{ // 保存エラーのある場合は 赤を送信　編集画面を残す
+                if(window.opener){
+                    report('red'); }}
+            close_w(); }
+
+        function close_w(){
+            window.open('about:blank','_self').close(); } // 完了画面は常に自動的に閉じる
+
+        function report(color){
+            window.opener.document.querySelector('.p-title__text').style.background=color; }}
+
+}); // 送信完了画面で動作
